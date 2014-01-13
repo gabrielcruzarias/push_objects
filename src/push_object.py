@@ -74,13 +74,20 @@ def startPushingMode(MoveBaseActionResult):
 # INITIAL CONDITIONS: The robot is close to the object (within ~1.50 meters of it)
 # GOAL: The robot, object, and goal all lie on the same line
 def goToIntermediateGoal():
-    global boxGoal
-    g = transformGoal(boxGoal[0], boxGoal[1])
-    o = [obj_x, obj_y]
+    global boxGoal, mapPose
+    (rx, ry, alpha) = mapPose
+    g = boxGoal
+    o = [rx + obj_x*math.cos(alpha) - obj_y*math.sin(alpha), ry + obj_x*math.sin(alpha) + obj_y*math.cos(alpha)]
+    print "r_x =", rx, ", ry =", ry, ", alpha =", alpha / math.pi, " pi radians"
+    print "o_x =", o[0], ", o_y =", o[1]
+    #g = transformGoal(boxGoal[0], boxGoal[1])
+    #o = [obj_x, obj_y]
     distance = math.sqrt((o[0] - g[0]) ** 2 + (o[1] - g[1]) ** 2)
     k = 0.8 / distance
     mg = [o[0] + k * (o[0] - g[0]), o[1] + k * (o[1] - g[1])] # middle goal
-    goToPose("base_footprint", mg, [0, 1])
+    print "mg_x =", mg[0], ", mg_y =", mg[1]
+    time.sleep(15)
+    goToPose("map", mg, [0, 1])
 
 # Transform the goal from /map frame to /base_footprint frame
 def transformGoal(x, y):
@@ -186,6 +193,12 @@ def processSensing(BumperEvent):
         found_object = True
 
 
+def mapLocation(PoseWithCovarianceStamped):
+    global mapPose # [x, y, theta]
+    mapPose[0] = PoseWithCovarianceStamped.pose.pose.position.x
+    mapPose[1] = PoseWithCovarianceStamped.pose.pose.position.y
+    mapPose[2] = (getTheta(PoseWithCovarianceStamped.pose.pose.orientation.w, PoseWithCovarianceStamped.pose.pose.orientation.z) + 2*math.pi) % (2*math.pi)
+
 
 ###############################################################################################################################
 ########## LOW LEVEL METHODS ########## LOW LEVEL METHODS ########## LOW LEVEL METHODS ########## LOW LEVEL METHODS ###########
@@ -236,6 +249,8 @@ t1 = 0
 t2 = 0
 t3 = 0
 
+mapPose = [0, 0, 0]
+
 boxGoal = (0, 1.5)
 
 
@@ -259,12 +274,13 @@ if __name__=="__main__":
     rospy.Subscriber('/move_base/result', MoveBaseActionResult, startPushingMode)
     rospy.Subscriber('/ar_pose_marker', AlvarMarkers, objectPose)
     rospy.Subscriber('/mobile_base/events/bumper', BumperEvent, processSensing)
+    rospy.Subscriber('/amcl_pose', PoseWithCovarianceStamped, mapLocation)
 
     transform = tf.TransformListener()
     rate = rospy.Rate(1.0)
 
     t0 = time.time()
-    goToPose("map", [2, 0.75], [0, 1])
+    goToPose("map", [1.5, 0.6], [0, 1])
     #goToPose("base_footprint", [1, 0], [0, 1]) # frame, [x, y] (position), [z, w] (orientation quaternion)
     
     while(True):
