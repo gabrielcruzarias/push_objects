@@ -1,0 +1,9 @@
+<launch>
+  <!--include file="$(find push_objects)/launch/amcl_demo.launch">
+    <arg name="map_file" value="$(find push_objects)/maps/office_map.yaml" />
+  </include-->
+
+  <node pkg="push_objects" type="smach_push_objects.py" name="smach_push_objects"  output="screen">
+    <remap from="push_object/cmd_vel" to="cmd_vel_mux/input/teleop"/>
+  </node>
+</launch>

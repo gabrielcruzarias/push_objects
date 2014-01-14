@@ -1,8 +1,8 @@
 #!/usr/bin/env python
 
-# This script will make the robot approach and push an object a given distance.
+# This script will make the robot push an object to a given point in a map.
 # Initial conditions: Robot is within ~1.5 meters of the object.
-# Goal: Push the object d meters.
+# Goal: Push the object to a given goal point.
 
 import roslib
 import rospy
@@ -74,13 +74,20 @@ def startPushingMode(MoveBaseActionResult):
 # INITIAL CONDITIONS: The robot is close to the object (within ~1.50 meters of it)
 # GOAL: The robot, object, and goal all lie on the same line
 def goToIntermediateGoal():
-    global boxGoal
-    g = transformGoal(boxGoal[0], boxGoal[1])
-    o = [obj_x, obj_y]
+    global boxGoal, mapPose
+    (rx, ry, alpha) = mapPose
+    g = boxGoal
+    o = [rx + obj_x*math.cos(alpha) - obj_y*math.sin(alpha), ry + obj_x*math.sin(alpha) + obj_y*math.cos(alpha)]
+    print "r_x =", rx, ", ry =", ry, ", alpha =", alpha / math.pi, " pi radians"
+    print "o_x =", o[0], ", o_y =", o[1]
+    #g = transformGoal(boxGoal[0], boxGoal[1])
+    #o = [obj_x, obj_y]
     distance = math.sqrt((o[0] - g[0]) ** 2 + (o[1] - g[1]) ** 2)
     k = 0.8 / distance
     mg = [o[0] + k * (o[0] - g[0]), o[1] + k * (o[1] - g[1])] # middle goal
-    goToPose("base_footprint", mg, [0, 1])
+    print "mg_x =", mg[0], ", mg_y =", mg[1]
+    time.sleep(15)
+    goToPose("map", mg, [0, 1])
 
 # Transform the goal from /map frame to /base_footprint frame
 def transformGoal(x, y):
@@ -166,49 +173,7 @@ def push(d):
 
 
 
-###############################################################################################################################
-######### SENSORS AND TOPICS ########## SENSORS AND TOPICS ########## SENSORS AND TOPICS ########## SENSORS AND TOPICS ########
-###############################################################################################################################
 
-# Gets the pose of the object relative to the robot (through the AR tags)
-def objectPose(AlvarMarkers):
-    global obj_x, obj_y, obj_theta
-    if (len(AlvarMarkers.markers) > 0):
-        obj_y = AlvarMarkers.markers[0].pose.pose.position.y
-        obj_x = AlvarMarkers.markers[0].pose.pose.position.x
-        obj_theta = getTheta(AlvarMarkers.markers[0].pose.pose.orientation.w, AlvarMarkers.markers[0].pose.pose.orientation.z)
-        #print "y = ", obj_y, ", theta = ", obj_theta / math.pi, "*pi"
-
-# This tells us when the robot is in contact with the object
-def processSensing(BumperEvent):
-    global found_object
-    if (not found_object and BumperEvent.PRESSED == 1):
-        found_object = True
-
-
-
-###############################################################################################################################
-########## LOW LEVEL METHODS ########## LOW LEVEL METHODS ########## LOW LEVEL METHODS ########## LOW LEVEL METHODS ###########
-###############################################################################################################################
-
-# Turns the turtlebot alpha radians
-def turn(alpha):
-    ERROR_TIME = 0.0 # This is needed because it'll take some time for the robot to accelerate. The ideal time will be determined experimentally (it might depend on alpha).
-    t = time.time()
-    while (time.time() - t < abs(alpha) / w + ERROR_TIME):
-        twist.linear.x = 0; twist.linear.y = 0; twist.linear.z = 0
-        twist.angular.x = 0; twist.angular.y = 0; twist.angular.z = math.copysign(w, alpha)
-        pub.publish(twist)
-    twist.linear.x = 0; twist.linear.y = 0; twist.linear.z = 0
-    twist.angular.x = 0; twist.angular.y = 0; twist.angular.z = 0
-    pub.publish(twist)
-
-# Gets the yaw angle from the quaternion describing the object's position
-def getTheta(w, z):
-    mag = math.sqrt(w ** 2 + z ** 2)
-    w /= mag
-    z /= mag
-    return math.atan2(2 * w * z, w ** 2 - z ** 2) #- math.pi / 2
 
 
 
@@ -236,6 +201,8 @@ t1 = 0
 t2 = 0
 t3 = 0
 
+mapPose = [0, 0, 0]
+
 boxGoal = (0, 1.5)
 
 
@@ -259,12 +226,13 @@ if __name__=="__main__":
     rospy.Subscriber('/move_base/result', MoveBaseActionResult, startPushingMode)
     rospy.Subscriber('/ar_pose_marker', AlvarMarkers, objectPose)
     rospy.Subscriber('/mobile_base/events/bumper', BumperEvent, processSensing)
+    rospy.Subscriber('/amcl_pose', PoseWithCovarianceStamped, mapLocation)
 
     transform = tf.TransformListener()
     rate = rospy.Rate(1.0)
 
     t0 = time.time()
-    goToPose("map", [2, 0.75], [0, 1])
+    goToPose("map", [1.5, 0.6], [0, 1])
     #goToPose("base_footprint", [1, 0], [0, 1]) # frame, [x, y] (position), [z, w] (orientation quaternion)
     
     while(True):
