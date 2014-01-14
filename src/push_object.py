@@ -1,8 +1,8 @@
 #!/usr/bin/env python
 
-# This script will make the robot approach and push an object a given distance.
+# This script will make the robot push an object to a given point in a map.
 # Initial conditions: Robot is within ~1.5 meters of the object.
-# Goal: Push the object d meters.
+# Goal: Push the object to a given goal point.
 
 import roslib
 import rospy
@@ -173,55 +173,7 @@ def push(d):
 
 
 
-###############################################################################################################################
-######### SENSORS AND TOPICS ########## SENSORS AND TOPICS ########## SENSORS AND TOPICS ########## SENSORS AND TOPICS ########
-###############################################################################################################################
 
-# Gets the pose of the object relative to the robot (through the AR tags)
-def objectPose(AlvarMarkers):
-    global obj_x, obj_y, obj_theta
-    if (len(AlvarMarkers.markers) > 0):
-        obj_y = AlvarMarkers.markers[0].pose.pose.position.y
-        obj_x = AlvarMarkers.markers[0].pose.pose.position.x
-        obj_theta = getTheta(AlvarMarkers.markers[0].pose.pose.orientation.w, AlvarMarkers.markers[0].pose.pose.orientation.z)
-        #print "y = ", obj_y, ", theta = ", obj_theta / math.pi, "*pi"
-
-# This tells us when the robot is in contact with the object
-def processSensing(BumperEvent):
-    global found_object
-    if (not found_object and BumperEvent.PRESSED == 1):
-        found_object = True
-
-
-def mapLocation(PoseWithCovarianceStamped):
-    global mapPose # [x, y, theta]
-    mapPose[0] = PoseWithCovarianceStamped.pose.pose.position.x
-    mapPose[1] = PoseWithCovarianceStamped.pose.pose.position.y
-    mapPose[2] = (getTheta(PoseWithCovarianceStamped.pose.pose.orientation.w, PoseWithCovarianceStamped.pose.pose.orientation.z) + 2*math.pi) % (2*math.pi)
-
-
-###############################################################################################################################
-########## LOW LEVEL METHODS ########## LOW LEVEL METHODS ########## LOW LEVEL METHODS ########## LOW LEVEL METHODS ###########
-###############################################################################################################################
-
-# Turns the turtlebot alpha radians
-def turn(alpha):
-    ERROR_TIME = 0.0 # This is needed because it'll take some time for the robot to accelerate. The ideal time will be determined experimentally (it might depend on alpha).
-    t = time.time()
-    while (time.time() - t < abs(alpha) / w + ERROR_TIME):
-        twist.linear.x = 0; twist.linear.y = 0; twist.linear.z = 0
-        twist.angular.x = 0; twist.angular.y = 0; twist.angular.z = math.copysign(w, alpha)
-        pub.publish(twist)
-    twist.linear.x = 0; twist.linear.y = 0; twist.linear.z = 0
-    twist.angular.x = 0; twist.angular.y = 0; twist.angular.z = 0
-    pub.publish(twist)
-
-# Gets the yaw angle from the quaternion describing the object's position
-def getTheta(w, z):
-    mag = math.sqrt(w ** 2 + z ** 2)
-    w /= mag
-    z /= mag
-    return math.atan2(2 * w * z, w ** 2 - z ** 2) #- math.pi / 2
 
 
 
