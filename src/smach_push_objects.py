@@ -411,8 +411,16 @@ if __name__=="__main__":
         smach.StateMachine.add('MOVE_BACK', Move_back(), 
                                transitions={'done':'WAIT_FOR_GOAL'})
 
+    # Create and start the introspection server
+    sis = smach_ros.IntrospectionServer('introspection_server', sm, '/SM_ROOT')
+    sis.start()
+
     # Execute SMACH plan
     outcome = sm.execute()
+
+    # Wait for ctrl-c to stop the application
+    rospy.spin()
+    sis.stop()
 
 
     #t0 = time.time()
