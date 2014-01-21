@@ -258,12 +258,13 @@ class Wait_for_goal(smach.State):
 
 # State FIND_BOX
 class Find_box(smach.State):
-    def __init__(self):
+    def __init__(self, tolerance):
+        self.tolerance = tolerance
         smach.State.__init__(self, outcomes=['box_found', 'box_not_found'])
 
     def execute(self, userdata):
         rospy.loginfo('Executing state FIND_BOX')
-        transition = face(0.3)
+        transition = face(tolerance)
         return transition
 
 
@@ -393,13 +394,13 @@ if __name__=="__main__":
         smach.StateMachine.add('WAIT_FOR_GOAL', Wait_for_goal(), 
                                transitions={'valid_goal':'FIND_BOX', 
                                             'invalid_goal':'WAIT_FOR_GOAL'})
-        smach.StateMachine.add('FIND_BOX', Find_box(), 
+        smach.StateMachine.add('FIND_BOX', Find_box(0.3), 
                                transitions={'box_found':'GO_TO_CORRECT_POSITION',
                                             'box_not_found':'WAIT_FOR_GOAL'})
         smach.StateMachine.add('GO_TO_CORRECT_POSITION', Go_to_correct_position(), 
                                transitions={'valid_goal':'FACE_BOX',
                                             'invalid_goal':'FIND_BOX'})
-        smach.StateMachine.add('FACE_BOX', Face_box(), 
+        smach.StateMachine.add('FACE_BOX', Find_box(0.03), 
                                transitions={'box_found':'APPROACH_BOX',
                                             'box_not_found':'WAIT_FOR_GOAL'})
         smach.StateMachine.add('APPROACH_BOX', Approach_box(), 
